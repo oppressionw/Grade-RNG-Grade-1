@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grade RNG: Ultimate Academy Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F7F3E9; --paper2: #EEE8D5; --ink: #1C1917; --ink2: #44403C; --ink3: #78716C;
+  --red: #DC2626; --gold: #D97706; --chalk: #1A3A2A; --chalk2: #2D5A3D; --chalk3: #4A8A5A;
+  --blue-ink: #1D4ED8; --purple-ink: #7C3AED; --pencil: #A8A29E; --line: #BFDBFE;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+/* UI REMASTER: Darker chalk background with better gradients */
+body { background: linear-gradient(135deg, var(--chalk), #0a1f14); font-family: 'Kalam', cursive; color: var(--ink); min-height: 100vh; overflow-x: hidden; transition: background 1s ease; }
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.03) 39px, rgba(255,255,255,0.03) 40px);
+}
+
+#app { max-width: 820px; margin: 0 auto; padding: 16px; position: relative; z-index: 1; }
+
+/* HEADER & PAPER */
+.school-header { text-align: center; padding: 20px 0 12px; color: rgba(255,255,255,0.85); }
+.school-name { font-family: 'Architects Daughter', cursive; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+.school-level { font-size: 24px; color: rgba(255,255,255,0.9); font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+.biome-display { font-family: 'Architects Daughter', cursive; font-size: 14px; color: var(--gold); margin-top: 4px; font-weight: bold; }
+
+/* UI REMASTER: Enhanced Paper Card */
+.paper-card { background: var(--paper); border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(0,0,0,0.08); }
+.paper-card::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(180deg, transparent 0px, transparent 27px, #C3D9F5 27px, #C3D9F5 28px); top: 44px; opacity: 0.5; }
+.paper-card::after { content: ''; position: absolute; top: 0; bottom: 0; left: 52px; width: 2px; background: rgba(220, 38, 38, 0.4); }
+.paper-inner { position: relative; z-index: 1; padding: 20px 24px 24px 68px; }
+.paper-subject { font-family: 'Architects Daughter', cursive; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--ink3); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+.subject-lock-wrap { display: flex; align-items: center; gap: 4px; cursor: pointer; background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; }
+
+/* ROLL AREA */
+.roll-zone { min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+.grade-stamp { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; }
+.stamp-letter { font-family: 'Architects Daughter', cursive; font-size: 100px; line-height: 1; color: var(--red); transform-origin: center; user-select: none; text-align: center; text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
+.stamp-letter.idle { color: var(--pencil); opacity: 0.3; font-size: 72px; }
+.grade-name-display { font-family: 'Architects Daughter', cursive; font-size: 14px; letter-spacing: 1px; margin-top: 6px; color: var(--ink2); text-align: center; font-weight: bold; }
+.grade-chance-display { font-size: 11px; color: var(--ink3); margin-top: 2px; font-family: 'Architects Daughter', cursive; }
+.glitch { text-shadow: 3px 0 red, -3px 0 blue; animation: glitch-anim 0.15s infinite; }
+@keyframes glitch-anim { 0% { transform: translate(0) } 20% { transform: translate(-3px, 2px) } 40% { transform: translate(-2px, -2px) } 60% { transform: translate(3px, 2px) } 80% { transform: translate(2px, -2px) } 100% { transform: translate(0) } }
+
+@keyframes stamp-in { 0% { transform: scale(3) rotate(-8deg); opacity: 0; } 50% { transform: scale(0.9) rotate(2deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+@keyframes stamp-idle { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+.stamp-animate { animation: stamp-in 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) forwards; }
+.stamp-rolling { animation: stamp-idle 0.15s ease-in-out infinite; }
+
+/* CUTSCENE OVERLAY */
+.cutscene-overlay { position: fixed; inset: 0; background: black; z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; opacity: 0; transition: opacity 0.5s ease; }
+.cutscene-overlay.active { display: flex; opacity: 1; animation: screen-shake 0.5s infinite; }
+.cutscene-text { font-family: 'Architects Daughter', cursive; font-size: 60px; text-transform: uppercase; letter-spacing: 10px; color: #fff; text-shadow: 0 0 20px #fff, 0 0 40px var(--gold); }
+@keyframes screen-shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+
+/* STATS & MOD TRAY */
+.stats-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 12px; }
+.stat-chip { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 10px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+.stat-val { font-size: 16px; font-weight: 700; color: #fff; display: block; }
+.stat-lbl { font-size: 9px; color: rgba(255,255,255,0.5); font-family: 'Architects Daughter', cursive; letter-spacing: 1px; text-transform: uppercase; display: block; margin-top: 1px; }
+
+.mod-tray { display: flex; gap: 8px; margin-bottom: 12px; }
+.mod-btn { flex: 1; padding: 10px; border-radius: 4px; font-family: 'Architects Daughter', cursive; font-size: 12px; border: 1px solid rgba(255,255,255,0.15); font-weight: bold; cursor: pointer; text-align: center; text-transform: uppercase; transition: all 0.2s; }
+.mod-btn.disabled { background: #1a202c !important; color: #4a5568 !important; opacity: 0.6; cursor: not-allowed; border-color: rgba(255,255,255,0.05); }
+.mod-btn.off { background: #2d3748; color: white; }
+.mod-btn.on { background: #38a169; color: white; box-shadow: 0 0 12px #38a169; }
+.audio-btn { background: #2b6cb0; color: white; border: 1px solid rgba(255,255,255,0.2); font-family: 'Architects Daughter', cursive; padding: 0 16px; border-radius: 4px; cursor: pointer; font-size: 12px; text-transform: uppercase; font-weight: bold; }
+
+/* GRADES & BUTTONS */
+.subject-grades-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 10px; }
+.subject-grade-card { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.05); padding: 6px 4px; border-radius: 4px; text-align: center; }
+.subj-name { font-size: 10px; color: rgba(255,255,255,0.6); font-family: 'Architects Daughter', cursive; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.subj-grade { font-size: 18px; font-weight: 700; font-family: 'Architects Daughter', cursive; display: block; margin-top: 2px; line-height: 1; }
+
+.roll-btn { width: 100%; padding: 16px; background: linear-gradient(180deg, #ef4444, #b91c1c); color: white; border: 2px solid #7f1d1d; border-radius: 6px; font-family: 'Architects Daughter', cursive; font-size: 20px; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; cursor: pointer; transition: transform 0.1s, filter 0.15s; margin-bottom: 12px; box-shadow: 0 6px 0 #7f1d1d, 0 10px 20px rgba(0,0,0,0.4); }
+.roll-btn:hover { filter: brightness(1.1); }
+.roll-btn:active { transform: translateY(6px); box-shadow: 0 0 0 #7f1d1d, 0 2px 4px rgba(0,0,0,0.4); }
+.roll-btn:disabled { background: var(--ink3); border-color: #444; box-shadow: 0 6px 0 #444; cursor: not-allowed; }
+
+.rebirth-panel { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.4); border-radius: 6px; padding: 16px; text-align: center; margin-bottom: 12px; display: none; }
+.rebirth-panel.visible { display: block; animation: stamp-in 0.5s ease; }
+.rebirth-panel h3 { font-family: 'Architects Daughter', cursive; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.rebirth-btn { background: var(--gold); color: var(--ink); border: none; padding: 10px 24px; border-radius: 4px; font-family: 'Architects Daughter', cursive; font-size: 14px; font-weight: bold; cursor: pointer; transition: opacity 0.15s; margin-top: 8px; width: 100%; }
+
+.menu-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.menu-btn { flex: 1; min-width: 100px; padding: 14px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; font-family: 'Architects Daughter', cursive; font-size: 14px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+.menu-btn:hover { background: rgba(255,255,255,0.15); border-color: var(--gold); transform: translateY(-2px); }
+
+/* MODALS */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+.modal-overlay.active { display: flex; }
+.modal-content { background: #111827; border: 2px solid rgba(255,255,255,0.15); border-radius: 8px; width: 90%; max-width: 800px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+.modal-header { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.4); }
+.modal-title { font-size: 20px; font-family: 'Architects Daughter', cursive; color: white; text-transform: uppercase; }
+.modal-close { background: transparent; border: none; color: var(--red); font-size: 24px; cursor: pointer; font-weight: bold; transition: transform 0.2s; }
+.modal-close:hover { transform: scale(1.2); }
+.modal-body { padding: 16px; overflow-y: auto; flex: 1; }
+
+/* TABS */
+.tab-row { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
+.tab-btn { background: transparent; border: none; color: rgba(255,255,255,0.4); font-family: 'Architects Daughter', cursive; font-size: 14px; cursor: pointer; padding: 6px 16px; text-transform: uppercase; border-radius: 3px; font-weight: bold; transition: color 0.2s, background 0.2s; }
+.tab-btn.active { color: var(--gold); background: rgba(255,215,0,0.1); border-bottom: 2px solid var(--gold); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* INVENTORY */
+.gear-slots-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.gear-slot { flex: 1; min-width: 90px; background: rgba(0,0,0,0.2); border: 1.5px dashed rgba(255,255,255,0.2); border-radius: 6px; padding: 10px 8px; text-align: center; cursor: pointer; position: relative; transition: border-color 0.2s; }
+.gear-slot.filled { border-style: solid; border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); }
+.gear-slot:hover { border-color: var(--gold); }
+.section-head { font-family: 'Architects Daughter', cursive; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+.inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.item-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 12px; cursor: pointer; position: relative; transition: all 0.2s; }
+.item-card:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.item-card.equipped { border-color: var(--chalk3); background: rgba(74, 138, 90, 0.1); }
+.item-card-name { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); display: block; margin-bottom: 4px; }
+.item-card-qty { position: absolute; top: 8px; right: 10px; font-size: 12px; color: var(--gold); font-family: 'Architects Daughter', cursive; font-weight: bold; }
+
+/* CRAFTING */
+.craft-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.craft-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; transition: border-color 0.2s; }
+.craft-card:hover { border-color: rgba(255,255,255,0.3); }
+.craft-title { font-size: 16px; font-weight: bold; color: white; display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
+.craft-recipe { font-size: 12px; color: rgba(255,255,255,0.7); font-family: 'Architects Daughter', cursive; margin-bottom: 12px; line-height: 1.4; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; }
+.craft-btn { background: var(--gold); color: #000; font-family: 'Architects Daughter'; font-size: 14px; border: none; padding: 10px; border-radius: 4px; cursor: pointer; text-transform: uppercase; font-weight: bold; transition: background 0.2s, transform 0.1s; }
+.craft-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+.craft-btn:hover:not(:disabled) { background: #f59e0b; transform: translateY(-1px); }
+
+/* UI PROGRESS BAR */
+.ui-progress-container { margin-bottom: 12px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); }
+.ui-progress-text { display: flex; justify-content: space-between; font-family: 'Architects Daughter', cursive; font-size: 12px; color: white; margin-bottom: 4px; font-weight: bold; }
+.ui-progress-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+.ui-progress-fill { height: 100%; background: var(--gold); transition: width 0.3s; box-shadow: 0 0 8px var(--gold); }
+
+/* ACHIEVEMENTS */
+.achievements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.ach-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; opacity: 0.6; filter: grayscale(1); transition: all 0.3s; cursor: pointer; }
+.ach-card.unlocked { opacity: 1; filter: grayscale(0); border-color: var(--gold); background: rgba(217, 119, 6, 0.15); box-shadow: 0 0 10px rgba(217, 119, 6, 0.2); }
+.ach-header { display: flex; align-items: center; gap: 10px; }
+.ach-icon { font-size: 28px; }
+.ach-name { font-size: 14px; font-weight: bold; color: white; display: block; }
+.ach-body { display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
+.ach-card.expanded .ach-body { display: block; }
+.ach-desc { font-size: 12px; color: rgba(255,255,255,0.7); font-family: 'Architects Daughter', cursive; display: block; margin-bottom: 4px; }
+
+/* QUESTS */
+.quest-card { background: rgba(0,0,0,0.4); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 6px; padding: 12px; margin-bottom: 8px; box-shadow: inset 0 0 10px rgba(74, 222, 128, 0.05); }
+.quest-title { font-weight: bold; color: #4ADE80; font-size: 16px; margin-bottom: 4px; text-transform: uppercase; font-family: 'Architects Daughter'; }
+.quest-desc { font-size: 13px; color: #e2e8f0; margin-bottom: 8px; }
+.quest-reward { font-size: 12px; color: var(--gold); font-weight: bold; margin-bottom: 8px; display: inline-block; background: rgba(217,119,6,0.2); padding: 2px 6px; border-radius: 4px; }
+
+/* MERCHANTS */
+.merchant-btn { position: fixed; bottom: 80px; left: 16px; padding: 16px 24px; background: linear-gradient(45deg, #000, #222); border: 2px solid var(--gold); color: var(--gold); border-radius: 8px; cursor: pointer; z-index: 1000; display: none; font-family: 'Architects Daughter'; text-transform: uppercase; font-weight: bold; animation: pulse 1.5s infinite, glow 2s infinite; box-shadow: 0 4px 15px rgba(0,0,0,0.8); }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+@keyframes glow { 0% { box-shadow: 0 0 5px var(--gold); } 50% { box-shadow: 0 0 20px var(--gold); } 100% { box-shadow: 0 0 5px var(--gold); } }
+
+/* ODDS TABLE */
+.odds-table { max-height: 200px; overflow-y: auto; padding-right: 4px; margin-bottom: 16px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); }
+.odds-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.odds-grade { font-family: 'Architects Daughter', cursive; font-weight: 700; font-size: 13px; min-width: 35px; text-align: center; }
+.odds-track { flex: 1; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.5); }
+.odds-fill { height: 100%; border-radius: 3px; box-shadow: 0 0 5px currentColor; }
+.odds-pct { font-size: 10px; color: rgba(255,255,255,0.5); font-family: 'Architects Daughter', cursive; min-width: 55px; text-align: right; }
+
+/* EFFECTS */
+.effects-bar { position: fixed; bottom: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 1500; pointer-events: none; align-items: flex-end; }
+.effect-item { background: rgba(0,0,0,0.8); border-left: 4px solid var(--gold); padding: 8px 12px; border-radius: 4px; color: white; font-family: 'Architects Daughter', cursive; font-size: 12px; backdrop-filter: blur(4px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); min-width: 180px; }
+.effect-name { font-weight: bold; font-size: 14px; margin-bottom: 2px; }
+.effect-time { color: rgba(255,255,255,0.6); font-size: 10px; }
+
+/* TOASTS & PARTICLES */
+.toast-container { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 3000; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.toast { background: rgba(17, 24, 39, 0.95); color: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 6px; font-family: 'Architects Daughter', cursive; font-size: 14px; border-left: 4px solid var(--chalk3); box-shadow: 0 4px 15px rgba(0,0,0,0.5); animation: toast-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), toast-out 0.3s ease 3s forwards; }
+.toast.rare { border-left-color: var(--gold); font-weight: bold; }
+.toast.warn { border-left-color: var(--red); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toast-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
+.particles-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 100; overflow: hidden; }
+.part { position: absolute; border-radius: 50%; animation: part-fly 1.5s ease-out forwards; box-shadow: 0 0 10px currentColor; }
+@keyframes part-fly { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0); } }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+
+@media (max-width: 600px) { .stats-bar { grid-template-columns: repeat(3, 1fr); gap: 4px;} .stamp-letter { font-size: 80px; } .craft-list { grid-template-columns: 1fr; } .menu-row { flex-direction: column; } }
+</style>
+</head>
+<body>
+
+<div class="cutscene-overlay" id="cutsceneOverlay">
+  <div class="cutscene-text" id="cutsceneText">TRANSCENDENT</div>
+  <p style="margin-top:20px; font-family:'Architects Daughter'; font-size:20px; color:var(--gold);">You have broken reality.</p>
+</div>
+
+<div class="particles-overlay" id="particlesOverlay"></div>
+<div class="toast-container" id="toastContainer"></div>
+<div class="effects-bar" id="effectsBar"></div>
+
+<!-- Fix: Merchant Button logic applied below -->
+<button id="merchantTrigger" class="merchant-btn" onclick="openModal('merchantModal')">The Black Merchant is Here!</button>
+
+<div id="app">
+
+  <div class="school-header">
+    <div class="school-name">Grade RNG Academy</div>
+    <div class="school-level" id="schoolLevel">Kindergarten: Grade 0</div>
+    <div class="biome-display" id="biomeDisplay">Biome: Standard Classroom</div>
+  </div>
+
+  <div class="paper-card">
+    <div class="paper-inner">
+      <div class="paper-subject">
+        <span id="paperSubjectText">Subject: Mathematics</span>
+        <label class="subject-lock-wrap"><input type="checkbox" id="lockSubjectCb" onchange="toggleSubjectLock()"> Lock</label>
+      </div>
+      <div class="roll-zone">
+        <div class="grade-stamp" id="gradeStamp">
+          <div class="stamp-letter idle" id="stampLetter">?</div>
+          <div class="grade-name-display" id="gradeNameDisplay">Press Roll</div>
+          <div class="grade-chance-display" id="gradeChanceDisplay">Good Luck.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-chip"><span class="stat-val" id="statPencils">0</span><span class="stat-lbl">✏️ Pencils</span></div>
+    <div class="stat-chip"><span class="stat-val" id="statLuck">1.0x</span><span class="stat-lbl">☘️ Luck</span></div>
+    <div class="stat-chip"><span class="stat-val" id="statStreak">0</span><span class="stat-lbl">🔥 Streak</span></div>
+    <div class="stat-chip"><span class="stat-val" id="statPity">0/100</span><span class="stat-lbl">🎯 Pity</span></div>
+    <div class="stat-chip"><span class="stat-val" id="statGPA">0.00</span><span class="stat-lbl">🎓 GPA</span></div>
+    <div class="stat-chip"><span class="stat-val" id="statRolls">0</span><span class="stat-lbl">📋 Rolls</span></div>
+  </div>
+
+  <div class="mod-tray">
+    <button class="audio-btn" onclick="toggleAudio()" id="audioBtn">🎵 Audio: Off</button>
+    <button class="mod-btn disabled" id="quickRollBtn" onclick="toggleQuickRoll()">Quick Roll (Unlocks at 100)</button>
+    <button class="mod-btn disabled" id="autoRollBtn" onclick="toggleAutoRoll()">Auto Roll (Unlocks at 1500)</button>
+  </div>
+
+  <button class="roll-btn" id="rollBtn" onclick="doRoll()">ROLL</button>
+
+  <div class="rebirth-panel" id="rebirthPanel">
+    <h3>🎓 Graduation Requirements</h3>
+    <p style="font-size:11px; color:rgba(255,255,255,0.7); font-family: 'Architects Daughter'; padding-bottom: 8px;">Loading Requirements...</p>
+    <button class="rebirth-btn" onclick="doRebirth()">Graduate to Next Grade →</button>
+  </div>
+
+  <div class="section-head">Report Card</div>
+  <div class="subject-grades-board" id="subjectGradesBoard"></div>
+
+  <div class="menu-row">
+    <button class="menu-btn" onclick="openModal('inventoryModal')">📦 Inventory</button>
+    <button class="menu-btn" onclick="openModal('craftingModal')">🛠️ Crafting</button>
+    <button class="menu-btn" onclick="openModal('achievementsModal')">🏆 Achievements</button>
+    <button class="menu-btn" onclick="openModal('questsModal')">📜 Quests</button>
+  </div>
+
+  <div class="section-head">Drop Rates</div>
+  <div class="odds-table" id="oddsTable"></div>
+
+</div>
+
+<!-- Inventory Modal -->
+<div class="modal-overlay" id="inventoryModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Inventory Management</div>
+      <button class="modal-close" onclick="closeModal('inventoryModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-head">Equipped Items</div>
+      <div class="gear-slots-row" id="itemSlotsRow"></div>
+      <div class="section-head">Equipped Gauntlets</div>
+      <div class="gear-slots-row" id="gearSlotsRow"></div>
+
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-inv-items" onclick="switchTab('inv', 'items')">Items & Mats</button>
+        <button class="tab-btn" id="tab-inv-gauntlets" onclick="switchTab('inv', 'gauntlets')">Gauntlets</button>
+        <button class="tab-btn" id="tab-inv-potions" onclick="switchTab('inv', 'potions')">Potions</button>
+        <button class="tab-btn" id="tab-inv-talismans" onclick="switchTab('inv', 'talismans')">Talismans</button>
+      </div>
+      <div id="content-inv-items" class="tab-content active">
+        <div class="inv-grid" id="itemsGrid"></div>
+      </div>
+      <div id="content-inv-gauntlets" class="tab-content">
+        <div class="inv-grid" id="gauntletsGrid"></div>
+      </div>
+      <div id="content-inv-potions" class="tab-content">
+        <div class="inv-grid" id="potionsGrid"></div>
+      </div>
+      <div id="content-inv-talismans" class="tab-content">
+        <div class="inv-grid" id="talismansGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Crafting Modal -->
+<div class="modal-overlay" id="craftingModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Crafting Workbench</div>
+      <button class="modal-close" onclick="closeModal('craftingModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-craft-gauntlets" onclick="switchTab('craft', 'gauntlets')">Gauntlets</button>
+        <button class="tab-btn" id="tab-craft-potions" onclick="switchTab('craft', 'potions')">Potions</button>
+        <button class="tab-btn" id="tab-craft-talismans" onclick="switchTab('craft', 'talismans')">Talismans</button>
+      </div>
+      <div id="content-craft-gauntlets" class="tab-content active">
+        <div class="craft-list" id="craftGauntletsList"></div>
+      </div>
+      <div id="content-craft-potions" class="tab-content">
+        <div class="craft-list" id="craftPotionsList"></div>
+      </div>
+      <div id="content-craft-talismans" class="tab-content">
+        <div class="craft-list" id="craftTalismansList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Achievements Modal -->
+<div class="modal-overlay" id="achievementsModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Hall of Fame</div>
+      <button class="modal-close" onclick="closeModal('achievementsModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="ui-progress-container">
+        <div class="ui-progress-text">
+          <span>Overall Progress</span>
+          <span id="achProgressText">0/0</span>
+        </div>
+        <div class="ui-progress-bar">
+          <div class="ui-progress-fill" id="achProgressFill" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="achievements-grid" id="achievementsGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Quests Modal -->
+<div class="modal-overlay" id="questsModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Quest Board</div>
+      <button class="modal-close" onclick="closeModal('questsModal')">×</button>
+    </div>
+    <div class="modal-body" id="questsBody">
+      <!-- Quests will spawn here -->
+    </div>
+  </div>
+</div>
+
+<!-- Merchant Modal -->
+<div class="modal-overlay" id="merchantModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title" id="merchantTitle">Black Merchant</div>
+      <button class="modal-close" onclick="closeModal('merchantModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--gold); margin-bottom: 12px; font-style: italic;" id="merchantDesc">"I've got the goods. Just hand over the pencils. Don't ask where I got them."</p>
+      <div class="craft-list" id="merchantList">
+        <!-- Fix: Added dynamic merchant inventory functionality -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// AUDIO SYSTEM
+let audioCtx = null;
+let soundEnabled = false;
+let bgmAudio = new Audio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3');
+bgmAudio.loop = true; bgmAudio.volume = 0.15;
+
+function initAudio() { if (audioCtx) return; audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+function toggleAudio() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('audioBtn').textContent = soundEnabled ? "🎵 Audio: On" : "🎵 Audio: Off";
+  if (soundEnabled) { initAudio(); bgmAudio.play().catch(e => console.log("Audio play prevented")); } 
+  else { bgmAudio.pause(); }
+}
+
+function playSound(type) {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+    if (type === 'roll') {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.01, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
+    } else if (type === 'fail') {
+      osc.type = 'sawtooth'; let filter = audioCtx.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 800;
+      osc.frequency.setValueAtTime(120, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(60, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.03, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+      osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.4); return;
+    } else if (type === 'win') {
+      osc.type = 'square'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.02, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
+    } else if (type === 'god') {
+      osc.type = 'square'; osc.frequency.setValueAtTime(220, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(880, audioCtx.currentTime + 1.0);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.5);
+    }
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+  } catch(e){}
+}
+
+// FIX: New Grade additions (Exclusive & Harder to roll)
+const GRADE_TIERS = [
+  { id:'F-', name:'Absolute Zero',    rarity:'Common',    baseChance: 35.0,  color:'#7F1D1D', gpa: 0.0, pencils: 1 },
+  { id:'F',  name:'Cursed',           rarity:'Common',    baseChance: 25.0,  color:'#DC2626', gpa: 0.0, pencils: 2 },
+  { id:'F+', name:'Almost Passing',   rarity:'Common',    baseChance: 15.0,  color:'#EF4444', gpa: 0.5, pencils: 3 },
+  { id:'D-', name:'Scraping By',      rarity:'Uncommon',  baseChance: 8.0,   color:'#C2410C', gpa: 0.7, pencils: 4 },
+  { id:'D',  name:'Academic Goblin',  rarity:'Uncommon',  baseChance: 5.0,   color:'#F97316', gpa: 1.0, pencils: 5 },
+  { id:'D+', name:'Slight Effort',    rarity:'Uncommon',  baseChance: 3.0,   color:'#FB923C', gpa: 1.3, pencils: 6 },
+  { id:'C-', name:'Mediocre',         rarity:'Rare',      baseChance: 2.0,   color:'#A16207', gpa: 1.7, pencils: 8 },
+  { id:'C',  name:'Barely Conscious', rarity:'Rare',      baseChance: 1.5,   color:'#EAB308', gpa: 2.0, pencils: 10 },
+  { id:'C+', name:'Above Average',    rarity:'Rare',      baseChance: 1.0,   color:'#FDE047', gpa: 2.3, pencils: 15 },
+  { id:'B-', name:'Getting Serious',  rarity:'Epic',      baseChance: 0.8,   color:'#15803D', gpa: 2.7, pencils: 20 },
+  { id:'B',  name:'Average Enjoyer',  rarity:'Epic',      baseChance: 0.5,   color:'#22C55E', gpa: 3.0, pencils: 30 },
+  { id:'B+', name:'Honor Student',    rarity:'Epic',      baseChance: 0.3,   color:'#4ADE80', gpa: 3.3, pencils: 40 },
+  { id:'A-', name:'Graduation Mat.',  rarity:'Legendary', baseChance: 0.15,  color:'#1D4ED8', gpa: 3.7, pencils: 75 },
+  { id:'A',  name:'Overachiever',     rarity:'Legendary', baseChance: 0.08,  color:'#3B82F6', gpa: 4.0, pencils: 100 },
+  { id:'A+', name:'Teacher\'s Pet',   rarity:'Legendary', baseChance: 0.04,  color:'#60A5FA', gpa: 4.3, pencils: 150 },
+  { id:'S-', name:'Prodigy',          rarity:'Mythic',    baseChance: 0.015, color:'#7E22CE', gpa: 4.5, pencils: 250 },
+  { id:'S',  name:'Academic God',     rarity:'Mythic',    baseChance: 0.008, color:'#A855F7', gpa: 4.8, pencils: 500 },
+  { id:'S+', name:'Legendary Scholar',rarity:'Divine',    baseChance: 0.002, color:'#FFD700', gpa: 5.0, pencils: 1500 },
+  { id:'Z',  name:'Beyond Logic',     rarity:'COSMIC',    baseChance: 0.0005, color:'#00FFFF', gpa: 5.5, pencils: 500000 },
+  { id:'Q',  name:'Omniscient',       rarity:'TRANSCENDENT',baseChance: 0.00001, color:'#FF00FF', gpa: 6.0, pencils: 1500000 },
+  { id:'O',  name:'The Developer',    rarity:'CREATOR',   baseChance: 0.000001, color:'#ff0055', gpa: 10.0, pencils: 10000000 },
+  { id:'Super F', name:'The Anomaly', rarity:'GLITCH',    baseChance: 0.0000001, color:'#000000', gpa: -1.0, pencils: 100000000 },
+];
+
+const INVENTORY_ITEMS = {
+  'pencil': { name: 'Chewed Pencil', effect: '+2% Luck', luckBonus: 0.02, speedBonus: 0 },
+  'flashcard': { name: 'Flashcard Stack', effect: '+5% Luck', luckBonus: 0.05, speedBonus: 0 },
+  'energy': { name: 'Energy Drink', effect: '+10% Luck', luckBonus: 0.10, speedBonus: 0 },
+  'textbook': { name: 'Dog-Eared Textbook', effect: '+15% Luck', luckBonus: 0.15, speedBonus: 0 },
+  'pet': { name: "Professor's Pet", effect: '+20% Luck', luckBonus: 0.20, speedBonus: 0 },
+  'lucky2': { name: 'Lucky No. 2', effect: '+25% Luck', luckBonus: 0.25, speedBonus: 0 },
+  'glasses': { name: 'Tutor\'s Glasses', effect: '+35% Luck', luckBonus: 0.35, speedBonus: 0 },
+  'quantum': { name: 'Quantum Calc', effect: '+50% Luck', luckBonus: 0.50, speedBonus: 0 },
+  'coffee': { name: 'Principal\'s Coffee', effect: '+75% Luck', luckBonus: 0.75, speedBonus: 0 },
+  'golden': { name: 'Golden Eraser', effect: '+100% Luck', luckBonus: 1.00, speedBonus: 0 },
+  'crown': { name: 'Crown of Knowledge', effect: '+500% Luck', luckBonus: 5.00, speedBonus: 0 },
+  'graphite': { name: 'Pure Graphite Core', effect: 'Material' },
+  'pulp': { name: 'Scrap Paper Pulp', effect: 'Material' },
+  'ink_drop': { name: 'Concentrated Ink', effect: 'Material' },
+  'essence': { name: 'Scholastic Essence', effect: 'Material' },
+  'silicon': { name: 'Broken Calculator Chip', effect: 'Material' },
+  'star_dust': { name: 'A+ Cosmic Dust', effect: 'Material' },
+  'luck_dust': { name: 'Sparkling Luck Dust', effect: 'Material' },
+  'speed_powder': { name: 'Caffeinated Powder', effect: 'Material' },
+  'chrono_crystal': { name: 'Chrono Crystal', effect: 'Material' },
+  'void_matter': { name: 'Void Matter', effect: 'Material' },
+  'quantum_thread': { name: 'Quantum Thread', effect: 'Biome Material (Lab)' },
+  'ancient_tome': { name: 'Ancient Tome Page', effect: 'Biome Material (Library)' }
+};
+
+let GAUNTLETS = {
+  'brass_g': { name: 'Retention Brass Knuckles', tier: 1, effect: '+15% Luck, +10% Speed', luckBonus: 0.15, speedBonus: 0.10 },
+  'iron_g': { name: 'Sturdy Iron Gauntlet', tier: 2, effect: '+30% Luck, +20% Speed', luckBonus: 0.30, speedBonus: 0.20 },
+  'scholar_g': { name: 'Sages Scholar Mitt', tier: 3, effect: '+60% Luck, +35% Speed', luckBonus: 0.60, speedBonus: 0.35 },
+  'haste_g': { name: 'Hermes Running Gloves', tier: 3, effect: '+10% Luck, +100% Speed', luckBonus: 0.10, speedBonus: 1.00 },
+  'lucky_g': { name: 'Clover Laden Grip', tier: 3, effect: '+100% Luck, +5% Speed', luckBonus: 1.00, speedBonus: 0.05 },
+  'cyber_g': { name: 'Quantum Cyber Claws', tier: 4, effect: '+120% Luck, +50% Speed', luckBonus: 1.20, speedBonus: 0.50 },
+  'time_weaver_g': { name: 'Time Weaver Vambrace', tier: 5, effect: '+50% Luck, +200% Speed', luckBonus: 0.50, speedBonus: 2.00 },
+  'cosmic_g': { name: 'Cosmic Dean Overlord', tier: 6, effect: '+350% Luck, +80% Speed', luckBonus: 3.50, speedBonus: 0.80 },
+  'void_g': { name: 'Singularity Grasp', tier: 7, effect: '+700% Luck, +150% Speed', luckBonus: 7.00, speedBonus: 1.50 },
+  'omega_g': { name: 'The OMEGA Gauntlet', tier: 8, effect: '+1500% Luck, +500% Speed', luckBonus: 15.00, speedBonus: 5.00 },
+  'creator_g': { name: 'Developer Hand', tier: 9, effect: '+5000% Luck, +1000% Speed', luckBonus: 50.00, speedBonus: 10.00 }
+};
+
+const POTIONS = {
+  'luck_p1': { name: 'Minor Cram Potion', effect: '+15% Luck', durationMins: 5, luckBonus: 0.15, speedBonus: 0 },
+  'speed_p1': { name: 'Espresso Focus Shot', effect: '+30% Speed', durationMins: 5, luckBonus: 0, speedBonus: 0.30 },
+  'hybrid_p1': { name: 'Dean\'s Special Brew', effect: '+40% Lck, +40% Spd', durationMins: 10, luckBonus: 0.40, speedBonus: 0.40 },
+  'luck_p2': { name: 'Major Epiphany Flask', effect: '+100% Luck', durationMins: 15, luckBonus: 1.00, speedBonus: 0 },
+  'speed_p2': { name: 'Tachyon Energy Drink', effect: '+200% Speed', durationMins: 15, luckBonus: 0, speedBonus: 2.00 },
+  'chrono_p': { name: 'Chrono-Stasis Serum', effect: '+50% Lck, +300% Spd', durationMins: 30, luckBonus: 0.50, speedBonus: 3.00 },
+  'omega_p': { name: 'Nectar of the Gods', effect: '+500% Lck, +500% Spd', durationMins: 60, luckBonus: 5.00, speedBonus: 5.00 },
+  'tranquility_p': { name: 'Tranquility Potion', effect: '10000x Speed', durationMins: 30, luckBonus: 0, speedBonus: 10000.00 }
+};
+
+const TALISMANS = {
+  'lucky_t': { name: 'Lucky Talisman', effect: 'Every 1000 rolls, 10 rolls of 100x luck', reqRolls: 1000, procRolls: 10, mult: 100 },
+  'speed_t': { name: 'Swift Talisman', effect: 'Every 100 rolls, 6x luck', reqRolls: 100, procRolls: 1, mult: 6 },
+  'constant_t': { name: 'Constant Talisman', effect: 'Every roll 1.5x luck', reqRolls: 1, procRolls: 1, mult: 1.5 },
+  'eleven_t': { name: 'Eleven Talisman', effect: 'Every 100 rolls, 11x luck', reqRolls: 100, procRolls: 1, mult: 11 },
+  'singularity_t': { name: 'Singularity Talisman', effect: '5000% Roll Speed. Every 100 rolls 40x luck', reqRolls: 100, procRolls: 1, mult: 40, speedBonus: 50.0 }
+};
+
+// FIX: Made crafting significantly harder per request (Multiplied Pencils & Mats)
+const CRAFTING_RECIPES = {
+  gauntlets: [
+    { id: 'brass_g', result: 'brass_g', costs: { pencils: 1500, pulp: 10, graphite: 15 } },
+    { id: 'iron_g', result: 'iron_g', costs: { pencils: 5000, brass_g: 1, ink_drop: 15 } },
+    { id: 'scholar_g', result: 'scholar_g', costs: { pencils: 15000, iron_g: 1, essence: 20 } },
+    { id: 'haste_g', result: 'haste_g', costs: { pencils: 20000, iron_g: 1, silicon: 50 } },
+    { id: 'lucky_g', result: 'lucky_g', costs: { pencils: 25000, iron_g: 1, graphite: 50 } },
+    { id: 'cyber_g', result: 'cyber_g', costs: { pencils: 50000, scholar_g: 1, silicon: 25, quantum_thread: 5 } },
+    { id: 'time_weaver_g', result: 'time_weaver_g', costs: { pencils: 120000, haste_g: 1, chrono_crystal: 15 } },
+    { id: 'cosmic_g', result: 'cosmic_g', costs: { pencils: 350000, cyber_g: 1, star_dust: 15, ancient_tome: 5 } },
+    { id: 'void_g', result: 'void_g', costs: { pencils: 800000, cosmic_g: 1, void_matter: 25 } },
+    { id: 'omega_g', result: 'omega_g', costs: { pencils: 5000000, void_g: 1, time_weaver_g: 1, lucky_g: 1 } },
+    { id: 'creator_g', result: 'creator_g', costs: { pencils: 50000000, omega_g: 1, void_matter: 100, quantum_thread: 50 } }
+  ],
+  potions: [
+    { id: 'luck_p1', result: 'luck_p1', costs: { pencils: 250, pulp: 4, ink_drop: 2 } },
+    { id: 'speed_p1', result: 'speed_p1', costs: { pencils: 300, graphite: 6, speed_powder: 3 } },
+    { id: 'hybrid_p1', result: 'hybrid_p1', costs: { pencils: 1000, essence: 3, luck_dust: 5, speed_powder: 5 } },
+    { id: 'luck_p2', result: 'luck_p2', costs: { pencils: 5000, essence: 10, luck_dust: 15 } },
+    { id: 'speed_p2', result: 'speed_p2', costs: { pencils: 5000, essence: 10, speed_powder: 15 } },
+    { id: 'chrono_p', result: 'chrono_p', costs: { pencils: 20000, chrono_crystal: 5, void_matter: 2 } },
+    { id: 'omega_p', result: 'omega_p', costs: { pencils: 100000, star_dust: 10, void_matter: 10, chrono_crystal: 10 } }
+  ],
+  talismans: [
+    { id: 'lucky_t', result: 'lucky_t', costs: { pencils: 15000, luck_dust: 40 } },
+    { id: 'speed_t', result: 'speed_t', costs: { pencils: 20000, speed_powder: 40 } },
+    { id: 'constant_t', result: 'constant_t', costs: { pencils: 35000, essence: 50, ancient_tome: 2 } },
+    { id: 'eleven_t', result: 'eleven_t', costs: { pencils: 50000, luck_dust: 100, star_dust: 15 } }
+  ]
+};
+
+const SUBJECTS = ['Math','History','English','Science','Art','PE','Philosophy','Economics'];
+const BIOMES = ['Standard Classroom', 'Abandoned Library', 'Quantum Lab'];
+
+let state = loadState();
+let quickRollActive = false;
+let autoRollActive = false;
+let autoRollInterval = null;
+let currentMerchant = null;
+
+function defaultState() {
+  return {
+    rolls: 0, totalAllTimeRolls: 0, pencils: 0, streak: 0, bestStreak: 0, pityCounter: 0,
+    rebirths: 0, inventory: {'pencil': 1}, gauntletsInventory: {}, potionsInventory: {}, talismansInventory: {},
+    activePotions: [], customGauntlets: {}, equipped: [], equippedGauntlets: [], equippedTalisman: null,
+    slotsUnlocked: 2, gauntletSlotsUnlocked: 1, currentSubject: 'Math', currentBiome: 'Standard Classroom', lockedSubject: false, subjectBestGrades: {}, overallGPA: 0.0,
+    achievements: [], unlockedGrades: [], playtimeMs: 0, fMinusStreak: 0, sPlusCount: 0, potionsDrank: 0, itemsCrafted: 0, questsCompleted: 0,
+    quests: []
+  };
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('gradeRNG_v7_2');
+    if (s) {
+      let parsed = JSON.parse(s);
+      if(!parsed.potionsInventory) parsed.potionsInventory = {};
+      if(!parsed.talismansInventory) parsed.talismansInventory = {};
+      if(!parsed.unlockedGrades) parsed.unlockedGrades = [];
+      if(!parsed.quests) parsed.quests = [];
+      if(!parsed.currentBiome) parsed.currentBiome = 'Standard Classroom';
+      return parsed;
+    }
+  } catch(e) {}
+  return defaultState();
+}
+
+function saveState() { localStorage.setItem('gradeRNG_v7_2', JSON.stringify(state)); }
+
+const ACHIEVEMENTS = [
+  { id:'a1', icon:'🎲', name:'First Day of School', desc:'1st roll', max: 1, current: s => s.totalAllTimeRolls, req: s => s.totalAllTimeRolls >= 1, reward:'None' },
+  { id:'a2', icon:'🎲', name:'Warming Up', desc:'10 rolls', max: 10, current: s => s.totalAllTimeRolls, req: s => s.totalAllTimeRolls >= 10, reward:'None' },
+  { id:'r100', icon:'📝', name:'Taking Notes', desc:'100 rolls', max: 100, current: s => s.totalAllTimeRolls, req: s => s.totalAllTimeRolls >= 100, reward:'Flashcard Gear' },
+  { id:'r1k', icon:'😤', name:'The Grindset', desc:'1,000 rolls', max: 1000, current: s => s.totalAllTimeRolls, req: s => s.totalAllTimeRolls >= 1000, reward:'500 Pencils' },
+  { id:'r10k', icon:'🤕', name:'Wrist Cramp', desc:'10,000 rolls', max: 10000, current: s => s.totalAllTimeRolls, req: s => s.totalAllTimeRolls >= 10000, reward:'+1 Gear Slot' },
+  { id:'r100k', icon:'📄', name:'Standardized Testing', desc:'100,000 rolls', max: 100000, current: s => s.totalAllTimeRolls, req: s => s.totalAllTimeRolls >= 100000, reward:'50k Pencils' },
+  { id:'gq', icon:'👁️', name:'Omniscient', desc:'Roll a Q', max: 1, current: s => checkingExactGrade(s,'Q')?1:0, req: s => checkingExactGrade(s, 'Q'), reward:'50M Pencils' },
+  { id:'go', icon:'🖥️', name:'God Mode', desc:'Roll an O', max: 1, current: s => checkingExactGrade(s,'O')?1:0, req: s => checkingExactGrade(s, 'O'), reward:'1B Pencils' }
+];
+
+function checkingExactGrade(s, gradeId) {
+  if (s.unlockedGrades && s.unlockedGrades.includes(gradeId)) return true;
+  return false;
+}
+
+function checkAchievements() {
+  let updated = false;
+  for (const ach of ACHIEVEMENTS) {
+    if (!state.achievements.includes(ach.id) && ach.req(state)) {
+      state.achievements.push(ach.id); grantAchievementReward(ach.id);
+      showToast(`🏆 Achievement: ${ach.name}!`, 'rare'); updated = true;
+    }
+  }
+  if (updated) { saveState(); updateAchievements(); }
+}
+
+function grantAchievementReward(id) {
+  if(id==='r100') state.inventory['flashcard']=(state.inventory['flashcard']||0)+1;
+  if(id==='r1k') state.pencils+=500;
+  if(id==='r10k') state.slotsUnlocked++;
+  if(id==='r100k') state.pencils+=50000;
+  if(id==='gq') state.pencils+=50000000;
+  if(id==='go') state.pencils+=1000000000;
+}
+
+function getLuck() {
+  let luck = 1.0 + (state.rebirths * 0.25) + (state.overallGPA * 0.50);
+  for (const gid of state.equipped) { if(INVENTORY_ITEMS[gid] && INVENTORY_ITEMS[gid].luckBonus) luck += INVENTORY_ITEMS[gid].luckBonus; }
+  for (const gaid of state.equippedGauntlets) { if(GAUNTLETS[gaid] && GAUNTLETS[gaid].luckBonus) luck += GAUNTLETS[gaid].luckBonus; }
+  state.activePotions.forEach(pot => luck += (pot.luckBonus || 0));
+  luck *= talismanProcMult;
+  
+  if (state.currentBiome === 'Abandoned Library') luck *= 1.2; // 20% luck boost in Library
+  
+  return isNaN(luck) ? 1.0 : luck;
+}
+
+function getRollSpeedMult() {
+  let speed = 1.0;
+  for (const gaid of state.equippedGauntlets) { if(GAUNTLETS[gaid] && GAUNTLETS[gaid].speedBonus) speed += GAUNTLETS[gaid].speedBonus; }
+  state.activePotions.forEach(pot => speed += (pot.speedBonus || 0));
+  if(state.equippedTalisman && TALISMANS[state.equippedTalisman].speedBonus) speed += TALISMANS[state.equippedTalisman].speedBonus;
+  
+  if (state.currentBiome === 'Quantum Lab') speed *= 2.0; // Double speed in Lab
+  
+  return isNaN(speed) ? 1.0 : speed;
+}
+
+function getEffectiveChances() {
+  const luck = getLuck();
+  let chances = GRADE_TIERS.map(g => ({ ...g, chance: g.baseChance }));
+  const reduction = Math.min(30, (luck - 1) * 5); 
+  chances[0].chance = Math.max(1, chances[0].chance - reduction);
+  chances[1].chance = Math.max(1, chances[1].chance - (reduction * 0.5));
+  const upperTotal = chances.slice(3).reduce((a,b) => a + b.chance, 0);
+  const bonusPool = (reduction * 1.5);
+  for (let i = 3; i < chances.length; i++) chances[i].chance += bonusPool * (chances[i].chance / upperTotal);
+  const total = chances.reduce((a,b) => a + b.chance, 0);
+  for (let c of chances) c.chance = (c.chance / total) * 100;
+  return chances;
+}
+
+let rolling = false;
+let talismanProcMult = 1;
+
+function toggleSubjectLock() { state.lockedSubject = document.getElementById('lockSubjectCb').checked; saveState(); }
+function toggleQuickRoll() {
+  if (state.totalAllTimeRolls < 100) return;
+  quickRollActive = !quickRollActive; document.getElementById('quickRollBtn').className = quickRollActive ? "mod-btn on" : "mod-btn off";
+}
+
+// FIX: Auto-Roll Lag optimization. Changed setTimeout from 1ms to RequestAnimationFrame or 50ms batching.
+function toggleAutoRoll() {
+  if (state.totalAllTimeRolls < 1500) return;
+  autoRollActive = !autoRollActive; document.getElementById('autoRollBtn').className = autoRollActive ? "mod-btn on" : "mod-btn off";
+  if (autoRollActive) runAutoRollLoop(); 
+}
+
+function runAutoRollLoop() {
+  if (!autoRollActive) return;
+  if (!rolling) doRoll(true);
+  
+  // OPTIMIZATION: Drastically reduces UI blocking while maintaining fast roll speeds
+  setTimeout(runAutoRollLoop, 50); 
+}
+
+function handleTalismanProcs() {
+  talismanProcMult = 1;
+  if(!state.equippedTalisman) return;
+  let t = TALISMANS[state.equippedTalisman];
+  if(state.totalAllTimeRolls % t.reqRolls < t.procRolls) {
+    talismanProcMult = t.mult;
+  }
+}
+
+function rollBiome() {
+  if (Math.random() < 0.005) { // 0.5% chance per roll to shift biome
+    let newBiome = BIOMES[Math.floor(Math.random() * BIOMES.length)];
+    if (newBiome !== state.currentBiome) {
+      state.currentBiome = newBiome;
+      showToast(`Biome Shift: ${newBiome}!`, 'rare');
+      document.getElementById('biomeDisplay').textContent = `Biome: ${state.currentBiome}`;
+      if (newBiome === 'Quantum Lab') document.body.style.background = 'linear-gradient(135deg, #0f172a, #1e1b4b)';
+      else if (newBiome === 'Abandoned Library') document.body.style.background = 'linear-gradient(135deg, #271c19, #431407)';
+      else document.body.style.background = 'linear-gradient(135deg, var(--chalk), #0a1f14)';
+    }
+  }
+}
+
+function triggerCutscene(gradeId, gradeName) {
+  const overlay = document.getElementById('cutsceneOverlay');
+  const text = document.getElementById('cutsceneText');
+  text.textContent = `${gradeName} (${gradeId})`;
+  overlay.classList.add('active');
+  playSound('god');
+  setTimeout(() => { overlay.classList.remove('active'); }, 2500);
+}
+
+function doRoll(isAuto = false) {
+  if (rolling) return;
+  rolling = true;
+  document.getElementById('rollBtn').disabled = true;
+  if(!isAuto) playSound('roll');
+
+  if (!state.lockedSubject) state.currentSubject = SUBJECTS[Math.floor(Math.random() * SUBJECTS.length)];
+  document.getElementById('paperSubjectText').textContent = `Subject: ${state.currentSubject}`;
+
+  const letterEl = document.getElementById('stampLetter');
+  letterEl.className = 'stamp-letter stamp-rolling'; letterEl.style.color = '#78716C'; letterEl.classList.remove('glitch');
+  
+  if (quickRollActive || isAuto) { revealGrade(isAuto); } 
+  else {
+    let ti = 0; const displayGrades = ['F','D','C','B','A','S'];
+    const ticker = setInterval(() => { letterEl.textContent = displayGrades[ti++ % displayGrades.length]; }, 80);
+    setTimeout(() => { clearInterval(ticker); revealGrade(); }, (600 + Math.random() * 300) / getRollSpeedMult());
+  }
+}
+
+function revealGrade(isAuto = false) {
+  handleTalismanProcs();
+  rollBiome();
+  
+  const chances = getEffectiveChances();
+  let r = Math.random() * 100;
+  let cum = 0; let result = GRADE_TIERS[0];
+  for (const c of chances) {
+    cum += c.chance; if (r <= cum) { result = GRADE_TIERS.find(g => g.id === c.id); break; }
+  }
+
+  state.pityCounter++;
+  if (state.pityCounter >= 100 && result.gpa < 3.7) { result = GRADE_TIERS.find(g => g.id === 'A-'); }
+  if (result.gpa >= 3.7) state.pityCounter = 0; 
+
+  rollMaterialDrop();
+
+  state.rolls++; state.totalAllTimeRolls++;
+  
+  if (!state.unlockedGrades.includes(result.id)) state.unlockedGrades.push(result.id);
+  
+  if (result.gpa > 0) state.streak++; else state.streak = 0;
+  if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+  const currentBestGPA = state.subjectBestGrades[state.currentSubject] || -1;
+  if (result.gpa > currentBestGPA) {
+      state.subjectBestGrades[state.currentSubject] = result.gpa;
+      const grades = Object.values(state.subjectBestGrades);
+      state.overallGPA = grades.reduce((a, b) => Math.max(0, a) + Math.max(0, b), 0) / SUBJECTS.length;
+  }
+
+  let basePencils = result.pencils + Math.floor(state.streak / 10);
+  let earned = basePencils * Math.pow(2, state.rebirths); state.pencils += earned;
+
+  // FIX: Cutscene Implementation
+  if (result.gpa >= 5.5) triggerCutscene(result.id, result.name);
+
+  if(!isAuto) { if (result.gpa <= 0) playSound('fail'); else playSound('win'); }
+
+  const letterEl = document.getElementById('stampLetter');
+  letterEl.textContent = result.id; letterEl.className = 'stamp-letter stamp-animate'; letterEl.style.color = result.color;
+  if(result.id === 'Super F' || result.id === 'Z' || result.id === 'Q' || result.id === 'O') letterEl.classList.add('glitch');
+
+  document.getElementById('gradeNameDisplay').textContent = result.name; document.getElementById('gradeNameDisplay').style.color = result.color;
+  document.getElementById('gradeChanceDisplay').textContent = `${result.rarity} · +${earned.toLocaleString()} pencils`;
+
+  if (result.gpa >= 3.0 && !isAuto) spawnParticles(result.color, result.gpa >= 4.5 ? 30 : 15);
+
+  updateQuests('roll', 1);
+  if(result.gpa >= 4.0) updateQuests('A_plus', 1);
+  checkAchievements(); 
+  
+  // OPTIMIZATION: Reduce save/update frequency during auto-roll to prevent lag
+  if(state.totalAllTimeRolls % (autoRollActive ? 50 : 10) === 0 || !isAuto) { saveState(); updateUI(); }
+  
+  let cooldown = autoRollActive ? 0 : (quickRollActive ? 50 : 400);
+  setTimeout(() => { rolling = false; document.getElementById('rollBtn').disabled = false; }, cooldown);
+}
+
+function rollMaterialDrop() {
+  if (Math.random() > 0.15) return; 
+  
+  const mats = ['graphite', 'pulp', 'ink_drop', 'essence', 'silicon', 'star_dust', 'luck_dust', 'speed_powder', 'chrono_crystal', 'void_matter'];
+  const weights = [0.35, 0.25, 0.15, 0.10, 0.05, 0.03, 0.03, 0.03, 0.008, 0.002]; 
+  
+  // Biome specific materials
+  if (state.currentBiome === 'Quantum Lab' && Math.random() < 0.05) {
+    state.inventory['quantum_thread'] = (state.inventory['quantum_thread'] || 0) + 1;
+    showToast('Found Quantum Thread!', 'rare'); return;
+  }
+  if (state.currentBiome === 'Abandoned Library' && Math.random() < 0.05) {
+    state.inventory['ancient_tome'] = (state.inventory['ancient_tome'] || 0) + 1;
+    showToast('Found Ancient Tome Page!', 'rare'); return;
+  }
+
+  let rand = Math.random(); let cumulative = 0;
+  for (let i = 0; i < mats.length; i++) {
+    cumulative += weights[i];
+    if (rand <= cumulative) {
+      let chosen = mats[i]; state.inventory[chosen] = (state.inventory[chosen] || 0) + 1; break;
+    }
+  }
+}
+
+// ... Rebirth logic ...
+function getRebirthReqs(rebirths) {
+    let rollsReq = 500 + (rebirths * 500);
+    let pencilsReq = 250 + (rebirths * 250);
+    let gpaReq = 3.7; let gradeNameReq = 'A-';
+    return { rollsReq, pencilsReq, gpaReq, gradeNameReq };
+}
+
+function checkRebirthAvailable() {
+  let reqs = getRebirthReqs(state.rebirths);
+  let hasAllSubjects = SUBJECTS.every(s => state.subjectBestGrades[s] !== undefined);
+  let meetsGrades = hasAllSubjects && SUBJECTS.every(s => state.subjectBestGrades[s] >= reqs.gpaReq);
+  let meetsRolls = state.rolls >= reqs.rollsReq; let meetsPencils = state.pencils >= reqs.pencilsReq;
+
+  const panel = document.getElementById('rebirthPanel');
+  panel.querySelector('p').innerHTML = `
+    Requires: ${state.rolls.toLocaleString()}/${reqs.rollsReq.toLocaleString()} Rolls.<br>
+    Requires: ${state.pencils.toLocaleString()}/${reqs.pencilsReq.toLocaleString()} Pencils.<br>
+    Requires: Grade ${reqs.gradeNameReq} or higher on ALL subjects.
+  `;
+  if (meetsGrades && meetsRolls && meetsPencils) { panel.classList.add('visible'); } else { panel.classList.remove('visible'); }
+}
+
+function doRebirth() {
+  let reqs = getRebirthReqs(state.rebirths);
+  state.pencils -= reqs.pencilsReq;
+  state.rebirths++; state.rolls = 0; state.streak = 0; state.overallGPA = 0.0; state.subjectBestGrades = {};
+  showToast(`🎓 Graduated! Welcome to Grade ${state.rebirths}`, 'rare');
+  checkAchievements(); saveState(); updateUI();
+}
+
+function updateUI() {
+  document.getElementById('statPencils').textContent = Math.floor(state.pencils).toLocaleString();
+  document.getElementById('statLuck').textContent = getLuck().toFixed(2) + 'x';
+  document.getElementById('statStreak').textContent = state.streak;
+  document.getElementById('statPity').textContent = `${state.pityCounter}/100`;
+  document.getElementById('statGPA').textContent = state.overallGPA.toFixed(2);
+  document.getElementById('statRolls').textContent = state.rolls.toLocaleString();
+  document.getElementById('biomeDisplay').textContent = `Biome: ${state.currentBiome}`;
+
+  let gradeStr = state.rebirths === 0 ? "Kindergarten" : (state.rebirths < 5 ? "Elementary" : (state.rebirths < 10 ? "High School" : "University"));
+  document.getElementById('schoolLevel').textContent = `${gradeStr}: Grade ${state.rebirths}`;
+
+  if (state.totalAllTimeRolls >= 100) { let b = document.getElementById('quickRollBtn'); b.textContent = "Quick Roll"; b.classList.remove('disabled'); b.classList.add(quickRollActive ? 'on' : 'off'); }
+  if (state.totalAllTimeRolls >= 1500) { let b = document.getElementById('autoRollBtn'); b.textContent = "Auto Roll"; b.classList.remove('disabled'); b.classList.add(autoRollActive ? 'on' : 'off'); }
+
+  const gradesBoard = document.getElementById('subjectGradesBoard'); gradesBoard.innerHTML = '';
+  SUBJECTS.forEach(subj => {
+    let gpa = state.subjectBestGrades[subj]; let tier = GRADE_TIERS.find(t => t.gpa === gpa) || { id: '-', color: '#A8A29E' };
+    gradesBoard.innerHTML += `<div class="subject-grade-card"><span class="subj-name">${subj}</span><span class="subj-grade" style="color:${tier.color}">${tier.id}</span></div>`;
+  });
+
+  updateOddsTable(); checkRebirthAvailable(); updateEffectsBar(); updateInventoryPanels(); updateCraftingPanels(); updateAchievements(); updateQuestsUI();
+}
+
+function updateOddsTable() {
+  const chances = getEffectiveChances(); const table = document.getElementById('oddsTable'); table.innerHTML = '';
+  chances.forEach(c => {
+    table.innerHTML += `<div class="odds-row">
+      <span class="odds-grade" style="color:${c.color}">${c.id}</span>
+      <div class="odds-track"><div class="odds-fill" style="width:${c.chance}%; background:${c.color}"></div></div>
+      <span class="odds-pct">${c.chance.toFixed(5)}%</span>
+    </div>`;
+  });
+}
+
+function updateEffectsBar() {
+  const bar = document.getElementById('effectsBar'); bar.innerHTML = '';
+  state.activePotions.forEach((p, idx) => {
+    let minsLeft = Math.ceil((p.endTime - Date.now()) / 60000);
+    bar.innerHTML += `<div class="effect-item"><div class="effect-name">${p.name}</div><div class="effect-time">${minsLeft} min left</div></div>`;
+  });
+}
+
+// INVENTORY UI
+function updateInventoryPanels() {
+  const row = document.getElementById('itemSlotsRow'); row.innerHTML = '';
+  for(let i=0; i<state.slotsUnlocked; i++) {
+    let eq = state.equipped[i];
+    if(eq) row.innerHTML += `<div class="gear-slot filled" onclick="unequipGear(${i})"><div>${INVENTORY_ITEMS[eq].name}</div><div style="font-size:9px; color:rgba(255,255,255,0.5)">Unequip</div></div>`;
+    else row.innerHTML += `<div class="gear-slot">Empty Slot</div>`;
+  }
+  const gauntletRow = document.getElementById('gearSlotsRow'); gauntletRow.innerHTML = '';
+  for(let i=0; i<state.gauntletSlotsUnlocked; i++) {
+    let eq = state.equippedGauntlets[i];
+    if(eq) gauntletRow.innerHTML += `<div class="gear-slot filled" onclick="unequipGauntlet(${i})"><div>${GAUNTLETS[eq].name}</div><div style="font-size:9px; color:rgba(255,255,255,0.5)">Unequip</div></div>`;
+    else gauntletRow.innerHTML += `<div class="gear-slot">No Gauntlet</div>`;
+  }
+  if(state.equippedTalisman) {
+    gauntletRow.innerHTML += `<div class="gear-slot filled" style="border-color:#7C3AED;" onclick="unequipTalisman()"><div>${TALISMANS[state.equippedTalisman].name}</div><div style="font-size:9px; color:rgba(255,255,255,0.5)">Unequip Talisman</div></div>`;
+  }
+
+  const itemsGrid = document.getElementById('itemsGrid'); itemsGrid.innerHTML = '';
+  for (let key in state.inventory) {
+    let q = state.inventory[key]; if(q<=0) continue;
+    let def = INVENTORY_ITEMS[key];
+    itemsGrid.innerHTML += `<div class="item-card" onclick="${def.effect.includes('Material')?'':'equipGear(\''+key+'\')'}">
+      <span class="item-card-qty">x${q}</span>
+      <span class="item-card-name">${def.name}</span>
+      <span style="font-size:11px; color:var(--gold); font-family:'Architects Daughter'">${def.effect}</span>
+    </div>`;
+  }
+
+  const gGrid = document.getElementById('gauntletsGrid'); gGrid.innerHTML = '';
+  for (let key in state.gauntletsInventory) {
+    let q = state.gauntletsInventory[key]; if(q<=0) continue; let def = GAUNTLETS[key];
+    gGrid.innerHTML += `<div class="item-card" onclick="equipGauntlet('${key}')">
+      <span class="item-card-qty">x${q}</span><span class="item-card-name">${def.name}</span><span style="font-size:11px; color:var(--gold);">${def.effect}</span>
+    </div>`;
+  }
+
+  const pGrid = document.getElementById('potionsGrid'); pGrid.innerHTML = '';
+  for (let key in state.potionsInventory) {
+    let q = state.potionsInventory[key]; if(q<=0) continue; let def = POTIONS[key];
+    pGrid.innerHTML += `<div class="item-card" onclick="drinkPotion('${key}')">
+      <span class="item-card-qty">x${q}</span><span class="item-card-name">${def.name}</span><span style="font-size:11px; color:var(--gold);">${def.effect} (${def.durationMins}m)</span>
+    </div>`;
+  }
+
+  const tGrid = document.getElementById('talismansGrid'); tGrid.innerHTML = '';
+  for (let key in state.talismansInventory) {
+    let q = state.talismansInventory[key]; if(q<=0) continue; let def = TALISMANS[key];
+    tGrid.innerHTML += `<div class="item-card" onclick="equipTalisman('${key}')">
+      <span class="item-card-qty">x${q}</span><span class="item-card-name">${def.name}</span><span style="font-size:11px; color:var(--gold);">${def.effect}</span>
+    </div>`;
+  }
+}
+
+function equipGear(id) { if (state.equipped.length < state.slotsUnlocked && state.inventory[id] > 0) { state.inventory[id]--; state.equipped.push(id); saveState(); updateUI(); playSound('roll'); } }
+function unequipGear(idx) { let id = state.equipped.splice(idx, 1)[0]; state.inventory[id] = (state.inventory[id] || 0) + 1; saveState(); updateUI(); }
+function equipGauntlet(id) { if (state.equippedGauntlets.length < state.gauntletSlotsUnlocked && state.gauntletsInventory[id] > 0) { state.gauntletsInventory[id]--; state.equippedGauntlets.push(id); saveState(); updateUI(); playSound('roll'); } }
+function unequipGauntlet(idx) { let id = state.equippedGauntlets.splice(idx, 1)[0]; state.gauntletsInventory[id] = (state.gauntletsInventory[id] || 0) + 1; saveState(); updateUI(); }
+function equipTalisman(id) { if(!state.equippedTalisman && state.talismansInventory[id]>0){ state.talismansInventory[id]--; state.equippedTalisman=id; saveState(); updateUI(); } }
+function unequipTalisman() { if(state.equippedTalisman){ let id=state.equippedTalisman; state.talismansInventory[id]=(state.talismansInventory[id]||0)+1; state.equippedTalisman=null; saveState(); updateUI(); } }
+function drinkPotion(id) {
+  if(state.potionsInventory[id] > 0) {
+    state.potionsInventory[id]--; let def = POTIONS[id]; state.potionsDrank++;
+    state.activePotions.push({ id: id, name: def.name, luckBonus: def.luckBonus, speedBonus: def.speedBonus, endTime: Date.now() + (def.durationMins * 60000) });
+    showToast(`Drank ${def.name}!`, 'rare'); saveState(); updateUI();
+  }
+}
+
+// CRAFTING UI
+function buildCraftingString(costs) {
+    let items = [];
+    for (let cKey in costs) {
+        if (cKey === 'pencils') continue;
+        let qty = state.inventory[cKey] || state.gauntletsInventory[cKey] || state.talismansInventory[cKey] || 0;
+        let needed = costs[cKey];
+        let color = qty >= needed ? '#4ADE80' : '#F87171';
+        let name = INVENTORY_ITEMS[cKey] ? INVENTORY_ITEMS[cKey].name : (GAUNTLETS[cKey] ? GAUNTLETS[cKey].name : (TALISMANS[cKey] ? TALISMANS[cKey].name : cKey));
+        items.push(`<div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;"><span>${name}</span><span style="color:${color}">${qty}/${needed}</span></div>`);
+    }
+    return items.join('');
+}
+
+function updateCraftingPanels() {
+  const gList = document.getElementById('craftGauntletsList'); gList.innerHTML = '';
+  CRAFTING_RECIPES.gauntlets.forEach(recipe => {
+    let def = GAUNTLETS[recipe.result]; let canCraft = canAffordCraft(recipe.costs);
+    let html = `<div class="craft-card"><div class="craft-title"><span>${def.name}</span><span style="font-size:10px; color:#A8A29E">T${def.tier}</span></div>
+      <div class="craft-recipe">
+        <div style="margin-bottom:8px;">
+          <div style="font-size:11px; margin-bottom:2px; display:flex; justify-content:space-between;"><span>✏️ Pencils</span><span style="color:${state.pencils >= recipe.costs.pencils ? '#4ADE80' : '#F87171'}">${Math.floor(state.pencils).toLocaleString()}/${recipe.costs.pencils.toLocaleString()}</span></div>
+          ${buildCraftingString(recipe.costs)}
+        </div>
+      </div>
+      <button class="craft-btn" ${canCraft?'':'disabled'} onclick="doCraft('gauntlet', '${recipe.id}')">Craft</button></div>`;
+    gList.innerHTML += html;
+  });
+
+  const pList = document.getElementById('craftPotionsList'); pList.innerHTML = '';
+  CRAFTING_RECIPES.potions.forEach(recipe => {
+    let def = POTIONS[recipe.result]; let canCraft = canAffordCraft(recipe.costs);
+    let html = `<div class="craft-card"><div class="craft-title"><span>${def.name}</span></div>
+      <div class="craft-recipe">
+         <div style="margin-bottom:8px;">
+          <div style="font-size:11px; margin-bottom:2px; display:flex; justify-content:space-between;"><span>✏️ Pencils</span><span style="color:${state.pencils >= recipe.costs.pencils ? '#4ADE80' : '#F87171'}">${Math.floor(state.pencils).toLocaleString()}/${recipe.costs.pencils.toLocaleString()}</span></div>
+          ${buildCraftingString(recipe.costs)}
+        </div>
+      </div>
+      <button class="craft-btn" ${canCraft?'':'disabled'} onclick="doCraft('potion', '${recipe.id}')">Craft</button></div>`;
+    pList.innerHTML += html;
+  });
+
+  const tList = document.getElementById('craftTalismansList'); tList.innerHTML = '';
+  CRAFTING_RECIPES.talismans.forEach(recipe => {
+    let def = TALISMANS[recipe.result]; let canCraft = canAffordCraft(recipe.costs);
+    let html = `<div class="craft-card"><div class="craft-title"><span>${def.name}</span></div>
+      <div class="craft-recipe">
+        <div style="margin-bottom:8px;">
+          <div style="font-size:11px; margin-bottom:2px; display:flex; justify-content:space-between;"><span>✏️ Pencils</span><span style="color:${state.pencils >= recipe.costs.pencils ? '#4ADE80' : '#F87171'}">${Math.floor(state.pencils).toLocaleString()}/${recipe.costs.pencils.toLocaleString()}</span></div>
+          ${buildCraftingString(recipe.costs)}
+        </div>
+      </div>
+      <button class="craft-btn" ${canCraft?'':'disabled'} onclick="doCraft('talisman', '${recipe.id}')">Craft</button></div>`;
+    tList.innerHTML += html;
+  });
+}
+
+function canAffordCraft(costs) {
+  if (state.pencils < costs.pencils) return false;
+  for (let key in costs) {
+    if(key === 'pencils') continue;
+    let invQty = (state.inventory[key] || 0) + (state.gauntletsInventory[key] || 0) + (state.talismansInventory[key] || 0);
+    if(invQty < costs[key]) return false;
+  }
+  return true;
+}
+
+function doCraft(type, recipeId) {
+  let recipeList = type==='gauntlet' ? CRAFTING_RECIPES.gauntlets : (type==='potion' ? CRAFTING_RECIPES.potions : CRAFTING_RECIPES.talismans);
+  let recipe = recipeList.find(r => r.id === recipeId);
+  if(!canAffordCraft(recipe.costs)) return;
+  state.pencils -= recipe.costs.pencils;
+  for(let key in recipe.costs) {
+    if(key==='pencils') continue;
+    if(state.inventory[key] !== undefined) state.inventory[key] -= recipe.costs[key];
+    else if(state.gauntletsInventory[key] !== undefined) state.gauntletsInventory[key] -= recipe.costs[key];
+    else if(state.talismansInventory[key] !== undefined) state.talismansInventory[key] -= recipe.costs[key];
+  }
+  if(type==='gauntlet') state.gauntletsInventory[recipe.result] = (state.gauntletsInventory[recipe.result] || 0) + 1;
+  else if(type==='potion') state.potionsInventory[recipe.result] = (state.potionsInventory[recipe.result] || 0) + 1;
+  else state.talismansInventory[recipe.result] = (state.talismansInventory[recipe.result] || 0) + 1;
+
+  state.itemsCrafted++; 
+  
+  // FIX: Make quests track crafting progress
+  updateQuests('craft', 1);
+  
+  playSound('win'); showToast(`Crafted Successfully!`, 'rare'); saveState(); updateUI();
+}
+
+function updateAchievements() {
+  const grid = document.getElementById('achievementsGrid'); grid.innerHTML = '';
+  let unlockedCount = state.achievements.length;
+  document.getElementById('achProgressText').textContent = `${unlockedCount}/${ACHIEVEMENTS.length}`;
+  document.getElementById('achProgressFill').style.width = `${(unlockedCount/ACHIEVEMENTS.length)*100}%`;
+  
+  for (const ach of ACHIEVEMENTS) {
+    const unlocked = state.achievements.includes(ach.id);
+    let prog = ach.max ? Math.min(ach.max, ach.current(state)) : (unlocked ? 1 : 0);
+    let max = ach.max || 1;
+    let pct = (prog / max) * 100;
+    let progText = unlocked ? "Completed" : `${Math.floor(prog).toLocaleString()}/${max.toLocaleString()}`;
+    
+    grid.innerHTML += `
+      <div class="ach-card ${unlocked ? 'unlocked' : ''}" onclick="toggleAchDetail(this)">
+        <div class="ach-header"><span class="ach-icon">${ach.icon}</span><span class="ach-name">${ach.name}</span></div>
+        <div class="ach-body">
+          <span class="ach-desc">${ach.desc}</span>
+          <div class="ui-progress-container" style="margin: 6px 0; padding: 4px; background: rgba(0,0,0,0.3);">
+            <div class="ui-progress-text" style="font-size: 9px; margin-bottom: 2px;"><span>Progress</span><span>${progText}</span></div>
+            <div class="ui-progress-bar" style="height: 4px;"><div class="ui-progress-fill" style="width:${pct}%; background: ${unlocked ? '#48BB78' : 'var(--gold)'};"></div></div>
+          </div>
+          <span style="font-size: 11px; color: ${unlocked ? '#48BB78' : 'var(--gold)'}; font-weight: bold;">${unlocked ? '✅ Unlocked!' : 'Reward: '+ach.reward}</span>
+        </div>
+      </div>`;
+  }
+}
+function toggleAchDetail(el) { el.classList.toggle('expanded'); }
+
+function generateQuests() {
+  if (state.quests.length < 3) {
+    let types = ['roll', 'A_plus', 'craft'];
+    let qt = types[Math.floor(Math.random()*types.length)];
+    let amt = qt==='roll' ? 1000 : (qt==='A_plus' ? 5 : 2);
+    let desc = qt==='roll' ? `Roll 1,000 times` : (qt==='A_plus' ? `Roll 5 A+ or higher grades` : `Craft 2 items`);
+    state.quests.push({ type: qt, target: amt, progress: 0, rewardPencils: 5000, desc: desc });
+    saveState(); updateQuestsUI();
+  }
+}
+function updateQuests(type, amount) {
+  state.quests.forEach((q, idx) => {
+    if(q.type === type && q.progress < q.target) {
+      q.progress += amount;
+      if (q.progress >= q.target) {
+        state.pencils += q.rewardPencils; state.questsCompleted++; showToast(`Quest Complete! +${q.rewardPencils} Pencils`, 'rare');
+        state.quests.splice(idx, 1); checkAchievements();
+      }
+    }
+  });
+  saveState(); updateQuestsUI();
+}
+function updateQuestsUI() {
+  const qb = document.getElementById('questsBody'); qb.innerHTML = '';
+  if (state.quests.length === 0) { qb.innerHTML = '<p style="color:white; font-family:\'Architects Daughter\'">No active quests. Wait for the board to refresh.</p>'; return; }
+  state.quests.forEach(q => {
+    let pct = (q.progress / q.target) * 100;
+    qb.innerHTML += `<div class="quest-card">
+      <div class="quest-title">Daily Errand</div>
+      <div class="quest-desc">${q.desc}</div>
+      <div class="quest-reward">Reward: ${q.rewardPencils} Pencils</div>
+      <div class="ui-progress-container" style="margin-bottom:0;"><div class="ui-progress-text"><span>Progress</span><span>${q.progress}/${q.target}</span></div><div class="ui-progress-bar"><div class="ui-progress-fill" style="width:${pct}%"></div></div></div>
+    </div>`;
+  });
+}
+
+// FIX: Implement the Black Merchant functionality
+function spawnMerchant() {
+  const btn = document.getElementById('merchantTrigger');
+  btn.style.display = 'block';
+  
+  // Give pencils a new use: Trade large amounts for rare materials
+  const mList = document.getElementById('merchantList');
+  mList.innerHTML = `
+    <div class="craft-card">
+      <div class="craft-title"><span>Star Dust Deal</span></div>
+      <div class="craft-recipe">Trade 50,000 Pencils for 1 Cosmic Dust</div>
+      <button class="craft-btn" onclick="buyFromMerchant('star_dust', 50000)">Buy</button>
+    </div>
+    <div class="craft-card">
+      <div class="craft-title"><span>Void Matter Deal</span></div>
+      <div class="craft-recipe">Trade 250,000 Pencils for 1 Void Matter</div>
+      <button class="craft-btn" onclick="buyFromMerchant('void_matter', 250000)">Buy</button>
+    </div>
+    <div class="craft-card">
+      <div class="craft-title"><span>Quantum Thread Deal</span></div>
+      <div class="craft-recipe">Trade 1,000,000 Pencils for 1 Quantum Thread</div>
+      <button class="craft-btn" onclick="buyFromMerchant('quantum_thread', 1000000)">Buy</button>
+    </div>
+  `;
+
+  // Merchant leaves after 60 seconds
+  setTimeout(() => {
+    btn.style.display = 'none';
+    if(document.getElementById('merchantModal').classList.contains('active')) closeModal('merchantModal');
+  }, 60000);
+}
+
+function buyFromMerchant(item, cost) {
+  if (state.pencils >= cost) {
+    state.pencils -= cost;
+    state.inventory[item] = (state.inventory[item] || 0) + 1;
+    showToast(`Purchased ${INVENTORY_ITEMS[item].name}!`, 'rare');
+    saveState(); updateUI();
+  } else {
+    showToast(`Not enough pencils!`, 'warn');
+  }
+}
+
+function openModal(id) { document.getElementById(id).classList.add('active'); if(id==='achievementsModal') updateAchievements(); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function switchTab(group, tabId) {
+  document.querySelectorAll(`[id^="tab-${group}"]`).forEach(el => el.classList.remove('active'));
+  document.querySelectorAll(`[id^="content-${group}"]`).forEach(el => el.classList.remove('active'));
+  document.getElementById(`tab-${group}-${tabId}`).classList.add('active');
+  document.getElementById(`content-${group}-${tabId}`).classList.add('active');
+}
+function showToast(msg, type='normal') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg;
+  c.appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+function spawnParticles(color, count) {
+  const container = document.getElementById('particlesOverlay');
+  const stamp = document.getElementById('gradeStamp').getBoundingClientRect();
+  const ox = stamp.left + stamp.width / 2; const oy = stamp.top + stamp.height / 2;
+  for(let i=0; i<count; i++) {
+    let p = document.createElement('div'); p.className = 'part';
+    p.style.background = color; p.style.width = p.style.height = (Math.random() * 8 + 4) + 'px';
+    p.style.left = ox + 'px'; p.style.top = oy + 'px';
+    let angle = Math.random() * Math.PI * 2; let dist = Math.random() * 150 + 50;
+    p.style.setProperty('--dx', Math.cos(angle)*dist+'px'); p.style.setProperty('--dy', Math.sin(angle)*dist+'px');
+    container.appendChild(p); setTimeout(() => p.remove(), 1500);
+  }
+}
+
+setInterval(() => {
+  state.playtimeMs += 10000;
+  state.activePotions = state.activePotions.filter(p => p.endTime > Date.now());
+  updateUI(); checkAchievements(); saveState();
+}, 10000);
+
+setInterval(generateQuests, 60000);
+
+// FIX: Actually trigger the merchant to spawn randomly every 2-5 minutes
+setInterval(() => {
+  if (Math.random() > 0.4) spawnMerchant();
+}, 150000);
+
+updateUI();
+</script>
+</body>
+</html>
